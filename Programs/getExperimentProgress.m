@@ -1,5 +1,5 @@
 % This program is used to find the progress made in the experiment
-function [nextSessionNum,nextTrialNum] = getExperimentProgress(subjectName,folderName)
+function [nextSessionNum,nextTrialNum,sessionNumList,trialNumList] = getExperimentProgress(subjectName,folderName)
 
 if ~exist('folderName','var')
     pathStr = fileparts(pwd);

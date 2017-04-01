@@ -2,8 +2,10 @@
 
 function biofeedbackRecording(subjectName)
 
+hFigure1 = figure(1);
+set(hFigure1,'Name','Experimenter Console');
 %%%% Set up the control panel to start, stop, calibrate, run and exit %%%%%
-hControlPanel = uipanel('Title','Controls','fontSize', 12, ...
+hControlPanel = uipanel('Parent',hFigure1,'Title','Controls','fontSize', 12, ...
     'Unit','Normalized','Position',[0 0.9 0.25 0.1]);
 
 % Create pushbuttons
@@ -22,7 +24,7 @@ uicontrol('Parent',hControlPanel,'style','pushbutton','string','Run',...
 %%%%%%%%%%%%%%%%%%%%%%%% Set up the progress panel %%%%%%%%%%%%%%%%%%%%%%%%
 [trialTypeList,folderName,sessionNum,trialNum] = createExperiment(subjectName);
 
-hProgressPanel = uipanel('Title','Progress','fontSize',12, ...
+hProgressPanel = uipanel('Parent',hFigure1,'Title','Progress','fontSize',12, ...
     'Unit','Normalized','Position',[0.25 0.9 0.25 0.1]);
 
 uicontrol('Parent',hProgressPanel,'Style','text','Unit','Normalized',...
@@ -38,7 +40,7 @@ hTrialNum = uicontrol('Parent',hProgressPanel,'style','edit','string',num2str(tr
     'Unit','Normalized','Position',[0.5 0 0.5 0.5]);
 
 %%%%%%%%%%%%%%%%%%%%%%%% Set up the Ranges panel %%%%%%%%%%%%%%%%%%%%%%%%%%
-hRangesPanel = uipanel('Title','Ranges','fontSize',12, ...
+hRangesPanel = uipanel('Parent',hFigure1,'Title','Ranges','fontSize',12, ...
     'Unit','Normalized','Position',[0.5 0.9 0.25 0.1]);
 
 uicontrol('Parent',hRangesPanel,'Style','text','Unit','Normalized',...
@@ -51,13 +53,12 @@ hAlphaMax = uicontrol('Parent',hRangesPanel,'style','edit','String','13',...
     'Unit','Normalized','Position', [0.75 0.5 0.25 0.5]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Generate Plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-hRawTrace               = subplot('Position',[0.05 0.7 0.7 0.14],'XTickLabel',[]);
-hTF                     = subplot('Position',[0.05 0.55 0.7 0.14]);
-%hPSD                    = getPlotHandles(1,2,[0.7517,0.5375,0.235,0.1938],0.05,0.05,0);
+hExperimentHandle       = subplot('Position',[0.05 0.85 0.9 0.04],'Parent',hFigure1);
+hRawTrace               = subplot('Position',[0.05 0.7 0.9 0.14],'Parent',hFigure1,'XTickLabel',[]);
+hTF                     = subplot('Position',[0.05 0.55 0.9 0.14],'Parent',hFigure1);
+[analysisPlotHandles,colorNameTypes] = biofeedbackAnalysis(subjectName,folderName); % Get plot handles for analysis
 
 %%%%%%%%%%% Initializing the parameters for the main programme %%%%%%%%%%%%
-
 state = 0; % by default state is zero which would be updated according to the case
 
 % Set up communication with EEG device and run in synthetic mode if connection
@@ -77,24 +78,42 @@ end
 % Durations
 sampleDurationS = 1;
 timeStartS = 0;
-experimentDurationS = 60;
+experimentDurationS = 50;
 calibrationDurationS = 15;
 maxFrequencyHz = 40; % Maximum frequency to be shown in the time-frequency plots
 
 calibrationAnalysisDurationS = [5 15]; % Also used for eye open analysis
-eyeCloseAnalysisDurationS  = [25 55];
+eyeCloseAnalysisDurationS  = [20 50];
 
 % TimeVals
 Fs = hdr.Fs; % sampling period of the EEG device.
 timeValsS = 0:1/Fs:sampleDurationS-1/Fs;
 
 % Initialization for the soundtone feedback
-smoothKernel    = repmat(1/10,1,5);
-epochsToAvg     = length(smoothKernel);
-
+epochsToAvg     = 5;
 Fsound          = 44100;  % need a high enough value so that alpha power below baseline can be played
 Fc              = 1000;
 Fi              = 500;
+
+% Second figure for the subject
+hFigure2 = figure(2);
+set(hFigure2,'Name','Subject Console');
+textFigure = axes('Position',[0 0 1 1],'Parent',hFigure2,'Visible','off');
+
+% Show the experiment
+trialTypeList1D = trialTypeList';
+trialTypeList1D = trialTypeList1D(:);
+
+hold(hExperimentHandle,'on');
+for i=1:3
+    pos=find(trialTypeList1D==i);
+    plot(hExperimentHandle,pos,0,'marker','o','color',colorNameTypes(i));
+end
+
+lastPos=(sessionNum-1)*size(trialTypeList,2)+trialNum;
+plot(hExperimentHandle,lastPos,0,'marker','*','color',colorNameTypes(trialTypeList1D(lastPos)));
+
+set(hExperimentHandle,'Visible','off');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Run the main loop %%%%%%%%%%%%%%%%%%%%%%%%%
 while 1
@@ -107,7 +126,6 @@ while 1
         timeStartS = 0; % don't do anything
         
     elseif state<=3 % Start, Calibrate or Run
-        
         if (state==2) % Calibration
             % Calibration should be done once for each session. If trialNum>1,
             % then first confirm if the calibration needs to be done again,
@@ -121,13 +139,31 @@ while 1
                 end
             end
         elseif (state==3) % Run experiment
-            saveCalibrationFilename = fullfile(folderName,[subjectName 'CalibrationProcessedDataSession' num2str(sessionNum) '.mat']); % Look for calibration file
-            if ~exist(saveCalibrationFilename,'file')
-                disp('You need to first run calibration for this session...');
-                state=0;
-            else
-                calibrationData = load(saveCalibrationFilename);
-                calibrationVal = calibrationData.calibrationVal;
+            if timeStartS==0 % Initialize
+                cla(textFigure);
+                saveCalibrationFilename = fullfile(folderName,[subjectName 'CalibrationProcessedDataSession' num2str(sessionNum) '.mat']); % Look for calibration file
+                if ~exist(saveCalibrationFilename,'file')
+                    disp('You need to first run calibration for this session...');
+                    state=0;
+                else
+                    calibrationData = load(saveCalibrationFilename);
+                    calibrationVal = calibrationData.calibrationVal;
+                end
+                
+                trialType = trialTypeList(sessionNum,trialNum);
+                pos=(sessionNum-1)*size(trialTypeList,2)+trialNum;
+                plot(hExperimentHandle,pos,0,'marker','*','color',colorNameTypes(trialType));
+                set(hExperimentHandle,'Visible','off');
+                
+                if trialType==2 % InValid
+                    clear session1ValidData
+                    % Randomly pick a valid trial from Session1
+                    session1ValidTrials = find(trialTypeList(1,:)==1);
+                    r = randperm(length(session1ValidTrials));
+                    trialNumToUse=session1ValidTrials(r(1));
+                    session1ProcessedFilename = fullfile(folderName,[subjectName 'ProcessedDataSession1Trial' num2str(trialNumToUse) '.mat']);
+                    session1ValidData=load(session1ProcessedFilename);
+                end
             end
         end
         
@@ -146,6 +182,7 @@ while 1
             if timeStartS==0 % Initialize
                 rawData = []; timeVals = [];
                 tfData = []; timeValsTF = [];
+                stFreqList = zeros(1,experimentDurationS);
                 cla(hRawTrace);
                 cla(hTF);
             end
@@ -160,22 +197,25 @@ while 1
 
             timeStartS = timeStartS+sampleDurationS;
             
-            if state==3 % Run
-                trialType = trialTypeList(sessionNum,trialNum);
-                changeInAlphaPower = 10*(log10(mean(power(alphaPos)))-calibrationVal);
-                
-                % Generate feedback
-                if trialType==1 % valid
-                    stFreq = round(Fc + changeInAlphaPower* Fi);
+            if state==3 % Run 
+                if timeStartS>= epochsToAvg % Generate Sound
+                    changeInAlphaPowerdB = 10*(mean(log10(mean(tfData(alphaPos,(timeStartS-epochsToAvg+1):timeStartS),1)))-calibrationVal);
                     
-                elseif trialType==2 % invalid
-                elseif trialType==3 % constant
+                    % Generate feedback
+                    if trialType==1 % valid
+                        stFreq = round(Fc + changeInAlphaPowerdB* Fi);
+                    elseif trialType==2 % invalid
+                        stFreq = session1ValidData.stFreqList(timeStartS);
+                    elseif trialType==3 % constant
+                        stFreq = Fc;
+                    end
+                    stFreqList(timeStartS)=stFreq;
+                    soundTone = sin(2*pi*stFreq*(0:1/Fsound:sampleDurationS-1/Fsound));
+                    sound(soundTone,Fsound);
                 end
-                soundTone = sine_tone(Fsound ,1,stFreq);
-                sound(soundTone,Fsound);
                 
                 if timeStartS==calibrationDurationS % Ask subject to close eyes and relax
-                    disp('Ask subject to close eyes');
+                    text(textFigure,0.1,0.5,'Close your Eyes','FontSize',60);
                     
                 elseif timeStartS==experimentDurationS % Save Data
                     timePosAnalysis = intersect(find(timeValsTF>=eyeCloseAnalysisDurationS(1)),find(timeValsTF<=eyeCloseAnalysisDurationS(2)));
@@ -187,11 +227,12 @@ while 1
                     % Save processed data
                     alphaPower = tfData(alphaPos,timePosAnalysis);
                     meanChangeInAlphaPowerdB = 10*(mean(log10(mean(alphaPower,1)))-calibrationVal);
-                    saveProcessedFilename = fullfile(folderName,[subjectName 'ProcessedDataSession' num2str(sessionNum) 'TrialNum' num2str(trialNum) '.mat']);
-                    save(saveProcessedFilename,'tfData','timeValsTF','freqVals','alphaPos','timePosAnalysis','meanChangeInAlphaPower');
+                    saveProcessedFilename = fullfile(folderName,[subjectName 'ProcessedDataSession' num2str(sessionNum) 'Trial' num2str(trialNum) '.mat']);
+                    save(saveProcessedFilename,'tfData','timeValsTF','freqVals','alphaPos','timePosAnalysis','meanChangeInAlphaPowerdB','stFreqList');
                     
                     % Display the score
-                    disp(meanChangeInAlphaPowerdB);
+                    cla(textFigure);
+                    text(textFigure,0.05,0.9,['Alpha change: ' num2str(meanChangeInAlphaPowerdB,2) ' dB'],'FontSize',60);
                     
                     % Change trialNum and sessionNum
                     [nextSessionNum,nextTrialNum] = getNextTrialAndSession(trialTypeList,sessionNum,trialNum);
@@ -199,7 +240,7 @@ while 1
                     set(hTrialNum,'String',num2str(nextTrialNum));
                     
                     % Update Analysis Figures
-                    analysisPlotHandles = biofeedbackAnalysis(subjectName,analysisPlotHandles);
+                    biofeedbackAnalysis(subjectName,folderName,analysisPlotHandles);
                     state=0;
                 end
             else
@@ -217,7 +258,7 @@ while 1
                         alphaPower = tfData(alphaPos,timePosCalibration);
                         calibrationVal = mean(log10(mean(alphaPower,1)));
                         saveProcessedFilename = fullfile(folderName,[subjectName 'CalibrationProcessedDataSession' num2str(sessionNum) '.mat']);
-                        save(saveProcessedFilename,'tfData','timeValsTF','freqVals','alphaPos','timePosCalibration','calibrationVal');
+                        save(saveProcessedFilename,'tfData','timeValsTF','freqVals','alphaPos','timePosCalibration','calibrationVal','stFreqList');
                         state=0;
                     end
                 end
@@ -228,15 +269,15 @@ while 1
         if sock ~=-1
             rda_close(sock);
         end
-        clf;
+        close(hFigure1);
+        close(hFigure2);
+        break;
     end
     drawnow;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%   Callbacks  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 % Callback functions
-
     function Callback_StartStop(~,~)
         if hStartStop.Value==1 % Run
             state = 1;
@@ -246,15 +287,12 @@ end
             set(hStartStop,'String','start');
         end
     end
-
     function Callback_Calibrate(~,~)
         state = 2;
     end
-
     function Callback_Run(~,~)
         state = 3;
     end
-
     function Callback_Exit(~,~)
         state = 4;
     end
@@ -325,8 +363,11 @@ hdr.nChans=5;
 end
 function plotData(hRawTrace,hTF,timeToPlot,signalToPlot,timeToPlotTF,freqVals,powerToPlot,alphaRange,displayTimeRange,signalLims,cLims)
 plot(hRawTrace,timeToPlot,mean(signalToPlot,1));
-imagesc(hTF,timeToPlotTF,freqVals,powerToPlot);
 axis(hRawTrace,[displayTimeRange signalLims]);
+
+imagesc(hTF,timeToPlotTF,freqVals,powerToPlot);
+line(hTF,displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(1),1),'color','k','linestyle','--');
+line(hTF,displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(2),1),'color','k','linestyle','--');
 xlim(hTF,displayTimeRange);
 set(hTF,'YDir','normal');
 %caxis(hTF,cLims);
