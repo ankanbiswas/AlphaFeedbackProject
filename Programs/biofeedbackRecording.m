@@ -64,7 +64,8 @@ state = 0; % by default state is zero which would be updated according to the ca
 % Set up communication with EEG device and run in synthetic mode if connection
 % is not made.
 if ispc
-    [cfg,sock] = rda_open;
+    sock=-1;
+%    [cfg,sock] = rda_open;
     if sock == -1
         hdr = getSynthDataHeader;
     else
@@ -215,7 +216,7 @@ while 1
                 end
                 
                 if timeStartS==calibrationDurationS % Ask subject to close eyes and relax
-                    text(textFigure,0.1,0.5,'Close your Eyes','FontSize',60);
+                    text(0.1,0.5,'Close your Eyes','FontSize',60,'Parent',textFigure);
                     
                 elseif timeStartS==experimentDurationS % Save Data
                     timePosAnalysis = intersect(find(timeValsTF>=eyeCloseAnalysisDurationS(1)),find(timeValsTF<=eyeCloseAnalysisDurationS(2)));
@@ -232,7 +233,7 @@ while 1
                     
                     % Display the score
                     cla(textFigure);
-                    text(textFigure,0.05,0.9,['Alpha change: ' num2str(meanChangeInAlphaPowerdB,2) ' dB'],'FontSize',60);
+                    text(0.05,0.9,['Alpha change: ' num2str(meanChangeInAlphaPowerdB,2) ' dB'],'FontSize',60,'Parent',textFigure);
                     
                     % Change trialNum and sessionNum
                     [nextSessionNum,nextTrialNum] = getNextTrialAndSession(trialTypeList,sessionNum,trialNum);
@@ -364,10 +365,9 @@ end
 function plotData(hRawTrace,hTF,timeToPlot,signalToPlot,timeToPlotTF,freqVals,powerToPlot,alphaRange,displayTimeRange,signalLims,cLims)
 plot(hRawTrace,timeToPlot,mean(signalToPlot,1));
 axis(hRawTrace,[displayTimeRange signalLims]);
-
-imagesc(hTF,timeToPlotTF,freqVals,powerToPlot);
-line(hTF,displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(1),1),'color','k','linestyle','--');
-line(hTF,displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(2),1),'color','k','linestyle','--');
+imagesc(timeToPlotTF,freqVals,powerToPlot,'Parent',hTF);
+line(displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(1),1),'color','k','linestyle','--','Parent',hTF);
+line(displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(2),1),'color','k','linestyle','--','Parent',hTF);
 xlim(hTF,displayTimeRange);
 set(hTF,'YDir','normal');
 %caxis(hTF,cLims);
