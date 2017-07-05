@@ -64,8 +64,8 @@ state = 0; % by default state is zero which would be updated according to the ca
 % Set up communication with EEG device and run in synthetic mode if connection
 % is not made.
 if ispc
-    sock=-1;
-%    [cfg,sock] = rda_open;
+%     sock=-1;
+    [cfg,sock] = rda_open;
     if sock == -1
         hdr = getSynthDataHeader;
     else
@@ -92,7 +92,8 @@ timeValsS = 0:1/Fs:sampleDurationS-1/Fs;
 
 % Initialization for the soundtone feedback
 epochsToAvg     = 5;
-Fsound          = 44100;  % need a high enough value so that alpha power below baseline can be played
+% Fsound          = 44100;  % need a high enough value so that alpha power below baseline can be played
+Fsound          = 50000;
 Fc              = 1000;
 Fi              = 500;
 
@@ -128,6 +129,9 @@ while 1
         
     elseif state<=3 % Start, Calibrate or Run
         if (state==2) % Calibration
+            
+            cla(textFigure);
+           
             % Calibration should be done once for each session. If trialNum>1,
             % then first confirm if the calibration needs to be done again,
             % because in that case the trials have to be redone.
@@ -216,7 +220,7 @@ while 1
                 end
                 
                 if timeStartS==calibrationDurationS % Ask subject to close eyes and relax
-                    text(0.1,0.5,'Close your Eyes','FontSize',60,'Parent',textFigure);
+                    text(0.1,0.5,'Close your Eyes and Relax','FontSize',60,'Parent',textFigure);
                     
                 elseif timeStartS==experimentDurationS % Save Data
                     timePosAnalysis = intersect(find(timeValsTF>=eyeCloseAnalysisDurationS(1)),find(timeValsTF<=eyeCloseAnalysisDurationS(2)));
@@ -229,8 +233,11 @@ while 1
                     alphaPower = tfData(alphaPos,timePosAnalysis);
                     meanChangeInAlphaPowerdB = 10*(mean(log10(mean(alphaPower,1)))-calibrationVal);
                     saveProcessedFilename = fullfile(folderName,[subjectName 'ProcessedDataSession' num2str(sessionNum) 'Trial' num2str(trialNum) '.mat']);
-                    save(saveProcessedFilename,'tfData','timeValsTF','freqVals','alphaPos','timePosAnalysis','meanChangeInAlphaPowerdB','stFreqList');
-                    
+                    if(trialType==2)
+                        save(saveProcessedFilename,'tfData','timeValsTF','freqVals','alphaPos','timePosAnalysis','meanChangeInAlphaPowerdB','stFreqList','trialNumToUse');
+                    else
+                        save(saveProcessedFilename,'tfData','timeValsTF','freqVals','alphaPos','timePosAnalysis','meanChangeInAlphaPowerdB','stFreqList');
+                    end                    
                     % Display the score
                     cla(textFigure);
                     text(0.05,0.9,['Alpha change: ' num2str(meanChangeInAlphaPowerdB,2) ' dB'],'FontSize',60,'Parent',textFigure);
@@ -356,6 +363,9 @@ if sock==-1
     pause(1);
 else
     rawData = rda_message(sock,hdr); % Get Data for 1 second
+    cLims = [-2 2]; % clims
+    signalLims = [-100 100];% signalLims
+    
 end
 end
 function hdr = getSynthDataHeader
@@ -370,5 +380,6 @@ line(displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(1),1),'color','k','
 line(displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(2),1),'color','k','linestyle','--','Parent',hTF);
 xlim(hTF,displayTimeRange);
 set(hTF,'YDir','normal');
-%caxis(hTF,cLims);
+caxis(hTF,cLims);
+colormap(hTF,'jet');
 end

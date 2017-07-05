@@ -1,5 +1,5 @@
    
-function [raw,SQN] = rda_message(sock,hdr)
+function rawData = rda_message(sock,hdr)
 %% Getting information for the header
     Fs = hdr.Fs;  % getting the sampling frquency of the data   
     resolution = hdr.resolutions(1,1);  % Assuming the resolution is same across the channels, change this if otherwise
@@ -7,7 +7,7 @@ function [raw,SQN] = rda_message(sock,hdr)
     X = []; 
     SQN = [];
     col = 0;
-    raw = [];
+    rawData = [];
     
 %     for i = 1:1000
     while (col < Fs) % here check how brain people are doing/ solving the problem
@@ -50,7 +50,7 @@ function [raw,SQN] = rda_message(sock,hdr)
             X  = [X dat];
             SQN = [SQN seqno];
             [~,col]= size(X);
-            
         end        
     end 
+    rawData = X;
 end

@@ -1,14 +1,18 @@
 % This program is used to analysize the results of the alpha feedback project.
 % Input - subjectName: A string to identify the subject.
 
-function [analysisPlotHandles,colorNames] = biofeedbackAnalysis(subjectName,folderName,analysisPlotHandles)
+function [analysisPlotHandles,colorNames,meanEyeOpenPowerList,meanEyeClosedPowerList,calibrationPowerList,trialTypeList1D,powerVsTimeList,timeVals,typeNameList] = biofeedbackAnalysis(subjectName,folderName,displayResultsFlag,analysisPlotHandles)
 
 if ~exist('subjectName','var');   subjectName='';                       end
-if ~exist('folderNameName','var')
+if ~exist('folderName','var');    folderName='';                        end
+if ~exist('displayResultsFlag','var');  displayResultsFlag=1;           end
+if ~exist('analysisPlotHandles','var'); analysisPlotHandles=[];         end
+
+if isempty(folderName)
     pathStr = fileparts(pwd);
     folderName = fullfile(pathStr,'Data',subjectName);
 end
-if ~exist('analysisPlotHandles','var') % Getting plot handles if they don't exist
+if isempty(analysisPlotHandles)
     analysisPlotHandles.powerVsTrial = subplot('Position',[0.05 0.3 0.4 0.2]);
     analysisPlotHandles.diffPowerVsTrial = subplot('Position',[0.05 0.05 0.4 0.2]);
     analysisPlotHandles.powerVsTime = subplot('Position',[0.55 0.3 0.4 0.2]);
@@ -76,44 +80,48 @@ else
         semEyeClosedPowerList = cat(2,semEyeClosedPowerList,semEyeClosedPower);
     end
     
-    % Plot Data
-    titleStr='';
+    timeVals = analysisData.timeValsTF;
     
-    hold(analysisPlotHandles.powerVsTrial,'on');
-    errorbar(analysisPlotHandles.powerVsTrial,meanEyeOpenPowerList,semEyeOpenPowerList,'color','k','marker','o');
-    errorbar(analysisPlotHandles.powerVsTrial,meanEyeClosedPowerList,semEyeClosedPowerList,'color','k','marker','V');
-    plot(analysisPlotHandles.powerVsTrial,calibrationPowerList,'color','k');
-    
-    hold(analysisPlotHandles.diffPowerVsTrial,'on');
-    hold(analysisPlotHandles.powerVsTime,'on');
-    hold(analysisPlotHandles.barPlot,'on');
-    for i=1:3 % Trial Type
-        trialPos = find(trialTypeList1D==i);
-        if i==3
-            titleStr = cat(2,titleStr,[typeNameList{i} '=' num2str(length(trialPos))]);
-        else
-            titleStr = cat(2,titleStr,[typeNameList{i} '=' num2str(length(trialPos)) ', ']);
-        end
+    if displayResultsFlag
+        % Plot Data
+        titleStr='';
         
-        if ~isempty(trialPos)
-            % Power versus Trial
-            errorbar(analysisPlotHandles.powerVsTrial,trialPos,meanEyeOpenPowerList(trialPos),semEyeOpenPowerList(trialPos),'color',colorNames(i),'marker','o','linestyle','none');
-            errorbar(analysisPlotHandles.powerVsTrial,trialPos,meanEyeClosedPowerList(trialPos),semEyeClosedPowerList(trialPos),'color',colorNames(i),'marker','V','linestyle','none');
+        hold(analysisPlotHandles.powerVsTrial,'on');
+        errorbar(analysisPlotHandles.powerVsTrial,meanEyeOpenPowerList,semEyeOpenPowerList,'color','k','marker','o');
+        errorbar(analysisPlotHandles.powerVsTrial,meanEyeClosedPowerList,semEyeClosedPowerList,'color','k','marker','V');
+        plot(analysisPlotHandles.powerVsTrial,calibrationPowerList,'color','k');
+        
+        hold(analysisPlotHandles.diffPowerVsTrial,'on');
+        hold(analysisPlotHandles.powerVsTime,'on');
+        hold(analysisPlotHandles.barPlot,'on');
+        for i=1:3 % Trial Type
+            trialPos = find(trialTypeList1D==i);
+            if i==3
+                titleStr = cat(2,titleStr,[typeNameList{i} '=' num2str(length(trialPos))]);
+            else
+                titleStr = cat(2,titleStr,[typeNameList{i} '=' num2str(length(trialPos)) ', ']);
+            end
             
-            % Change in Power versus Trial, separated by trialType
-            deltaPower = meanEyeClosedPowerList(trialPos)-calibrationPowerList(trialPos);
-            errorbar(analysisPlotHandles.diffPowerVsTrial,deltaPower,semEyeClosedPowerList(trialPos),'color',colorNames(i),'marker','V');
-            
-            % Power versus time
-            plot(analysisPlotHandles.powerVsTime,analysisData.timeValsTF,mean(powerVsTimeList(trialPos,:),1),'color',colorNames(i));
-            
-            % Bar Plot
-            bar(analysisPlotHandles.barPlot,i,mean(deltaPower),colorNames(i));
-            errorbar(analysisPlotHandles.barPlot,i,mean(deltaPower),std(deltaPower)/sqrt(length(deltaPower)),'color',colorNames(i));
+            if ~isempty(trialPos)
+                % Power versus Trial
+                errorbar(analysisPlotHandles.powerVsTrial,trialPos,meanEyeOpenPowerList(trialPos),semEyeOpenPowerList(trialPos),'color',colorNames(i),'marker','o','linestyle','none');
+                errorbar(analysisPlotHandles.powerVsTrial,trialPos,meanEyeClosedPowerList(trialPos),semEyeClosedPowerList(trialPos),'color',colorNames(i),'marker','V','linestyle','none');
+                
+                % Change in Power versus Trial, separated by trialType
+                deltaPower = meanEyeClosedPowerList(trialPos)-calibrationPowerList(trialPos);
+                errorbar(analysisPlotHandles.diffPowerVsTrial,deltaPower,semEyeClosedPowerList(trialPos),'color',colorNames(i),'marker','V');
+                
+                % Power versus time
+                plot(analysisPlotHandles.powerVsTime,analysisData.timeValsTF,mean(powerVsTimeList(trialPos,:),1),'color',colorNames(i));
+                
+                % Bar Plot
+                bar(analysisPlotHandles.barPlot,i,mean(deltaPower),colorNames(i));
+                errorbar(analysisPlotHandles.barPlot,i,mean(deltaPower),std(deltaPower)/sqrt(length(deltaPower)),'color',colorNames(i));
+            end
         end
+        title(analysisPlotHandles.powerVsTrial,titleStr);
+        xlim(analysisPlotHandles.barPlot,[0.5 3.5]);
+        set(analysisPlotHandles.barPlot,'XTick',1:3,'XTickLabel',typeNameList);
+        drawnow;
     end
-    title(analysisPlotHandles.powerVsTrial,titleStr);
-    xlim(analysisPlotHandles.barPlot,[0.5 3.5]);
-    set(analysisPlotHandles.barPlot,'XTick',1:3,'XTickLabel',typeNameList);
-    drawnow;
 end
