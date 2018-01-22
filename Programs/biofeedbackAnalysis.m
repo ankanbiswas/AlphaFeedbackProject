@@ -82,7 +82,7 @@ else
     
     timeVals = analysisData.timeValsTF;
     
-    if displayResultsFlag
+%     if displayResultsFlag
         % Plot Data
         titleStr='';
         
@@ -123,5 +123,5 @@ else
         xlim(analysisPlotHandles.barPlot,[0.5 3.5]);
         set(analysisPlotHandles.barPlot,'XTick',1:3,'XTickLabel',typeNameList);
         drawnow;
-    end
+%     end
 end

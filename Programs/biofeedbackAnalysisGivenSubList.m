@@ -1,7 +1,9 @@
 
 % Combined analysis of the given subject list
+% 
+% sublist = {'SB','SS','HS','ABa','DD','DB','AJ','SG','SSH'}; % Given subject list for analysis
 
-sublist = {'SB','SS','HS','ABa','DD','DB','AJ','SG','SSH'}; % Given subject list for analysis
+sublist = {'SKS1'}; % Given subject list for analysis
 
 analysisPlotHandles.powerVsTrial        = subplot('Position',[0.05 0.3 0.4 0.2]);
 analysisPlotHandles.diffPowerVsTrial    = subplot('Position',[0.05 0.05 0.4 0.2]);
